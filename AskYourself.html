@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>AskYourself-v1</title>
+<style type="text/css">
+body{font-family:monospace; font-size: 3em; white-space:pre-wrap;}
+h2{margin: 0px; background-color: #8affac;}
+button, select, input{font-size: 1.5em;}
+#Answer{background-color: #8fdffc;}
+textarea, #Ram_Content_input, #Recent_Add_input{font-size: 0.7em;}
+</style>
+<script type="text/javascript" src="jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="FileSaver.js"></script>
+<script type="text/javascript" src="AskYourself.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {  
+var id_of_choosen;
+var ids_of_opinions = [];
+var oA_json = []; 
+// Example oA_json[0] fieldnames are: 
+// oA_json[0].id  -> never change it.
+// oA_json[0].weight -> (Number) turn it higher, if your answer is wrong. influences Randmom-Function 
+// oA_json[0].count -> (Number) counts how often you was asked. (For Button who filters Questions which where ask more than X times) 
+// oA_json[0].Question
+// oA_json[0].Answer
+$("body").click(function() {
+     $("#Ram_Content_input").val(JSON.stringify(oA_json));
+});
+
+$("#localStorage_toRam_button").click(function() { 
+    $.each(localStorage, function(key, value){        
+        oA_json[key]=JSON.parse(value);
+    });
+});
+
+$("#Ram_tolocalStorage_button").click(function() {
+    oA_json.forEach(function(element) {
+        localStorage.setItem(element.id, JSON.stringify(element));      
+    }); 
+});
+
+$("#File_toRam_input").change(function() {     
+  //var files = $("#File_toRam_input").files; jQuery Selector dont work here.
+    var files = document.getElementById('File_toRam_input').files;
+    if (files.length) {
+        var r = new FileReader();
+        r.onload = function(e) {
+            oA_json = JSON.parse(e.target.result);
+        };
+        r.onerror = function(e) {
+            alert('Failed to load file: ' + files[0].name + ' (' + e.target.error.name + ')');
+        };
+        r.readAsText(files[0]);
+    }
+});
+
+$("#Ram_toFile_button").click(function() {
+    var content = JSON.stringify(oA_json);
+    var filename = $("#filename_input").val();
+    var blob = new Blob([content], {
+        type: "text/plain;charset=utf-8"
+    });
+    saveAs(blob, filename);
+});
+
+$("#textarea_toRam").click(function() { 
+    oA_json = JSON.parse($("#JSON_input_textarea").val());
+});
+
+$("#Ramto_textarea").click(function() { 
+    $("#JSON_input_textarea").val(JSON.stringify(oA_json));      
+});
+
+$("#ask-random_button").click(function() {
+    $("#Answer").html("");
+    id_of_choosen = f_random(oA_json);
+    $("#id-Question_input").val(oA_json[id_of_choosen].id);
+    $("#Question").html(oA_json[id_of_choosen].Question);
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+    oA_json[id_of_choosen].count += 1;
+    $("#Ask-Counter_input").val(oA_json[id_of_choosen].count);
+});
+
+$("#ask-id_button").click(function() {
+    $("#Answer").html("");
+    id_of_choosen = $("#id-Question_input").val();
+    $("#Question").html(oA_json[id_of_choosen].Question);
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+    oA_json[id_of_choosen].count += 1;
+    $("#Ask-Counter_input").val(oA_json[id_of_choosen].count);
+});
+
+$("#ask-next_button").click(function() {
+    $("#Answer").html("");
+    id_of_choosen = Number($("#id-Question_input").val()) + 1;
+    $("#id-Question_input").val(oA_json[id_of_choosen].id);
+    $("#Question").html(oA_json[id_of_choosen].Question);
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+    oA_json[id_of_choosen].count += 1;
+    $("#Ask-Counter_input").val(oA_json[id_of_choosen].count);
+});
+
+$("#Answer_button").click(function() {
+    $("#Answer").html(oA_json[id_of_choosen].Answer);
+});
+
+$("#plus1_button").click(function() {
+    oA_json[id_of_choosen].weight += 1; 
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+});
+
+$("#minus1_button").click(function() {
+    oA_json[id_of_choosen].weight -= 1; 
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+});
+
+$("#LTCounter_input, #GTWeight_input").on('change keydown paste input', function() {
+    ids_of_opinions = [];
+    var LTCounter = Number($("#LTCounter_input").val());
+    var GTWeight = Number($("#GTWeight_input").val());   
+    oA_json.forEach(function(element) {
+        if (element.count < LTCounter && element.weight > GTWeight){
+            ids_of_opinions.push(element.id);
+        } 
+    }); 
+    $("#availible_for_rand_input").val(ids_of_opinions.length);
+});
+
+$("#ask-next-but_button").click(function() {
+    if(ids_of_opinions.length < 1){
+        return false;
+    }    
+    $("#Answer").html("");
+    id_of_choosen = ids_of_opinions.pop();
+    $("#id-Question_input").val(oA_json[id_of_choosen].id);
+    $("#Question").html(oA_json[id_of_choosen].Question);
+    $("#Weight_input").val(oA_json[id_of_choosen].weight);
+    oA_json[id_of_choosen].count += 1;
+    $("#Ask-Counter_input").val(oA_json[id_of_choosen].count);
+    $("#availible_for_rand_input").val(ids_of_opinions.length);
+});
+
+$("#add-new-Question_button").click(function() {
+    var i_new_index = oA_json.length;
+    if (i_new_index === 0 && ! confirm('Your Ram is empty? Press Cancel if you don´t want to start with something new')){
+        return false;
+    }
+    var s_Q_json = $("#new_Question_textarea").val();
+    var s_A_json = $("#new_Answer_textarea").val();
+    var s_new_json = { 
+        "id":       i_new_index, 
+        "weight":   5, 
+        "count":    0, 
+        "Question": s_Q_json, 
+        "Answer":  s_A_json 
+    };   
+    oA_json[i_new_index] = s_new_json;   
+    oA_json.forEach(function(element) {
+        localStorage.setItem(element.id, JSON.stringify(element));      
+    });
+    $("#Recent_Add_input").val(JSON.stringify(oA_json[i_new_index])); 
+});
+
+});   
+</script>  
+</head>
+<body>
+    <h2>AskYourself-1.html</h2>
+Look at the .json file or CodeComments the see which fields are needed. 
+Ram_Content:<input id="Ram_Content_input" size="70" value="no Objekt_Data avalible" >
+<button type="button" id="localStorage_toRam_button">localStorage_toRam</button> <button type="button" id="Ram_tolocalStorage_button">Ram_tolocalStorage</button>
+<input type="file" id="File_toRam_input" accept=".json">-> File_toRam
+<button type="button" id="Ram_toFile_button">Store...</button><input id="filename_input" size="17" value="changeme.json">-> Ram_toFile
+<button type="button" id="textarea_toRam">textarea_toRam</button> <button type="button" id="Ramto_textarea">Ramto_textarea</button>
+<textarea id="JSON_input_textarea" rows="2" cols="100">Insert into or Copy from your JSON-String.</textarea>
+<button type="button" id="add-new-Question_button">add-new-Question_toRam_and_tolocalStorage</button>
+<textarea id="new_Question_textarea" rows="4" cols="100">Insert new Question.</textarea>
+<textarea id="new_Answer_textarea" rows="4" cols="100">Insert new Answer.</textarea>
+Recent_Add:<input id="Recent_Add_input" size="70" value="empty" >
+<h2 id="htop">Start now and get smart.</h2>
+<button type="button" id="ask-random_button">ask-random</button> <button type="button" id="ask-id_button">ask-id</button> id-Question<input id="id-Question_input" maxlength="3" size="3" value="0"><button type="button" id="ask-next_button">ask-next</button>
+Ask-Counter<input id="Ask-Counter_input" maxlength="3" size="3"> Weight (for f_random)<input id="Weight_input" maxlength="3" size="3"> <button type="button" id="plus1_button">+ 1</button> <button type="button" id="minus1_button">- 1</button>
+<input id="availible_for_rand_input" maxlength="3" size="3"><button type="button" id="ask-next-but_button">ask-next-but</button>Counter&LT;<input id="LTCounter_input" maxlength="3" size="3"> and Weight&GT;<input id="GTWeight_input" maxlength="3" size="3">
+<hr>   
+<div id="Question"></div>
+<button type="button" id="Answer_button">Answer</button>
+<div id="Answer"></div>
+
+
+
+
+
+</body>
+</html>
